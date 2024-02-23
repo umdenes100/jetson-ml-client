@@ -1,0 +1,9 @@
+[Unit]
+Description=Enes100ML startup sequence
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/mlboot.sh
+
+[Install]
+WantedBy=default.target

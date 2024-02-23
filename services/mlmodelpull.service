@@ -1,0 +1,10 @@
+[Unit]
+Description=Start Model Listener
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/modelpullboot.sh
+Environment=PATH=/home/jetson/.nvm/versions/node/v16.20.2/bin
+
+[Install]
+WantedBy=default.target
