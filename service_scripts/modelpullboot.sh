@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /home/jetson/model-listener/
+cd /home/jetson/jetson-ml-client/model-listener/
 /home/jetson/.nvm/versions/node/v16.20.2/bin/node listen.mjs #--name "model-listener"
 #which node
 #/home/jetson/.nvm/versions/node/v16.20.2/bin/pm2 start listen.mjs --interpreter=/home/jetson/.nvm/versions/node/v16.20.2/bin/node --name "model-listener"
