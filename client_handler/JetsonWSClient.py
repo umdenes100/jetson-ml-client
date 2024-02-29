@@ -1,3 +1,4 @@
+import time
 import websocket
 import json
 import os
@@ -9,7 +10,6 @@ from time import sleep
 import torch
 import torchvision
 import torch.nn.functional as F
-#import rel
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -32,6 +32,7 @@ std = torch.Tensor([0.229, 0.224, 0.225]).cuda()
 class JetsonClient:
     def on_message(self, _, message):
         print(message)
+        start = time.perf_counter()
         message = json.loads(message)
         if not message['op'] == 'prediction_request':
             return
@@ -41,7 +42,7 @@ class JetsonClient:
         try:
             print(IP)
             print(team_name)
-            cap = cv2.VideoCapture('http://' + IP + ":81/stream")
+            cap = cv2.VideoCapture('http://' + IP + "/cam.jpg")
             if cap.isOpened():
                 print("captured")
                 ret, frame = cap.read()
@@ -62,7 +63,8 @@ class JetsonClient:
             self.ws.send(json.dumps({
                 "op": "prediction_results",
                 "teamName": team_name,
-                "prediction": results
+                "prediction": results,
+                "executionTime": time.perf_counter() - start
             }, cls=NpEncoder))
             print('sent :)')
         except Exception as e:
@@ -85,17 +87,18 @@ class JetsonClient:
     def run(self):
         while True:
             self.ws = websocket.WebSocketApp("ws://192.168.1.2:7756", on_message=self.on_message, on_open=self.on_open, on_error=self.on_error)#, on_close=self.on_close)
-            self.ws.run_forever() # can we do this?
+            self.ws.run_forever()
             sleep(5)
 
     def __init__(self):
         # websocket.enableTrace(True)
+        self.model = torchvision.models.resnet18(pretrained=True)
         self.run()
         
     def handler(self, image, team_name):
-        
+        res = ''
         model_fi = None
-        for entry in os.scandir('/model-listener/models/'):
+        for entry in os.scandir('/nvdli-nano/jetson-ml-client/model-listener/models/'):
             if entry.name.startswith(team_name):
                 model_fi = entry.name
                 break
@@ -107,19 +110,19 @@ class JetsonClient:
         num_str = os.path.splitext(num_str)[0]
         print(num_str)
         dim = int(num_str)
-        
+        self.model.fc = torch.nn.Linear(512, dim)
+        self.model = self.model.to(torch.device('cuda'))
+
         # TODO figure out what of these can be declared outisde of the handler possibly
-        device = torch.device('cuda')
-        model = torchvision.models.resnet18(pretrained=True)
-        model.fc = torch.nn.Linear(512, dim)
-        model = model.to(device)
-        model.load_state_dict(torch.load('/model-listener/models/' + model_fi))
-        model.eval()
-        output = model(image)
+        self.model.load_state_dict(torch.load('/nvdli-nano/jetson-ml-client/model-listener/models/' + model_fi))
+        self.model.eval()
+        output = self.model(image)
         output = F.softmax(output, dim=1).detach().cpu().numpy().flatten()
+
         for i, score in enumerate(list(output)):
             print(str(i) + " " + str(score))
         return output.argmax()
 
 
+print('Imports finished. Starting websocket.')
 client = JetsonClient()
