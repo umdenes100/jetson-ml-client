@@ -1,4 +1,4 @@
 #!/bin/bash
-echo "hello VS"
+echo "Docker initialized, running websockets client."
 python3 /nvdli-nano/jetson-ml-client/client_handler/JetsonWSClient.py
 
