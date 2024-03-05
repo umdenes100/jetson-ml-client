@@ -10,10 +10,10 @@ export NVM_DIR="$HOME/.nvm"
 
 nvm install 16
 
-sudo npm cache clean -f
-sudo npm install -g n
-sudo n stable
-sudo npm install --unsafe-perm=true --allow-root
+# sudo npm cache clean -f
+# sudo npm install -g n
+# sudo n stable
+# sudo npm install --unsafe-perm=true --allow-root
 
 npm install firebase
 npm install node-fetch
