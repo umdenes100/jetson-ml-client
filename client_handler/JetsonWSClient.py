@@ -31,7 +31,7 @@ std = torch.Tensor([0.229, 0.224, 0.225]).cuda()
 
 class JetsonClient:
     def on_message(self, _, message):
-        print(message)
+        print(message,flush=True)
         start = time.perf_counter()
         message = json.loads(message)
         if not message['op'] == 'prediction_request':
@@ -40,26 +40,26 @@ class JetsonClient:
         IP = message['ESPIP'][0]
         team_name = message['team_name']
         try:
-            print(IP)
-            print(team_name)
+            print(IP,flush=True)
+            print(team_name,flush=True)
             cap = cv2.VideoCapture('http://' + IP + "/cam.jpg")
             if cap.isOpened():
-                print("captured")
+                print("captured",flush=True)
                 ret, frame = cap.read()
             else:
-                print("failed capture")
+                print("failed capture",flush=True)
                 raise Exception("Could not get image from WiFiCam (cv2)")
             
             try:
-                cv2.imwrite('imcurr.jpg', frame)
+                cv2.imwrite('/nvdli-nano/img_curr.jpg', frame)
             except:
-                print('failed to save image :(')
+                print('failed to save image :(', flush=True)
             
-            print('entering preprocess...')
+            print('Entering preprocess...', flush=True)
             picture = preprocess(frame)
             results = self.handler(picture, team_name)
-            print(results)
-            print('sending')
+            print('Results: ' + str(results), flush=True)
+            print('Sending to VS...')
             self.ws.send(json.dumps({
                 "op": "prediction_results",
                 "teamName": team_name,
@@ -75,10 +75,10 @@ class JetsonClient:
             }, cls=NpEncoder))
 
     def on_open(self, _):
-        print("Opened!")
+        print("Opened!", flush=True)
 
     def on_error(self, _, error):
-        print(error)
+        print(error, flush=True)
 
     # def on_close(self, _):
     #     sleep(5)
@@ -103,12 +103,11 @@ class JetsonClient:
                 model_fi = entry.name
                 break
         if model_fi is None:
-            print("model file not found")
+            print("model file not found", flush=True)
             raise Exception(f"Cound not find model for team: {team_name} \n Available models: {', '.join([entry.name for entry in os.scandir('/model-listener/models/')])}")
         
         num_str = model_fi.split('_')[-1]
         num_str = os.path.splitext(num_str)[0]
-        print(num_str)
         dim = int(num_str)
         self.model.fc = torch.nn.Linear(512, dim)
         self.model = self.model.to(torch.device('cuda'))
@@ -120,9 +119,9 @@ class JetsonClient:
         output = F.softmax(output, dim=1).detach().cpu().numpy().flatten()
 
         for i, score in enumerate(list(output)):
-            print(str(i) + " " + str(score))
+            print(str(i) + " " + str(score), flush=True)
         return output.argmax()
 
 
-print('Imports finished. Starting websocket.')
+print('Imports finished. Starting websocket.', flush=True)
 client = JetsonClient()
