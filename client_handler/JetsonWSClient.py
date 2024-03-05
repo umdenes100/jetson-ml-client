@@ -59,7 +59,7 @@ class JetsonClient:
             picture = preprocess(frame)
             results = self.handler(picture, team_name)
             print('Results: ' + str(results), flush=True)
-            print('Sending to VS...')
+            print('Sending to VS...', flush=True)
             self.ws.send(json.dumps({
                 "op": "prediction_results",
                 "teamName": team_name,
