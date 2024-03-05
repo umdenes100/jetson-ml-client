@@ -2,6 +2,7 @@ import time
 import websocket
 import json
 import os
+import random
 import PIL.Image
 import numpy as np
 import io
@@ -93,6 +94,15 @@ class JetsonClient:
     def __init__(self):
         # websocket.enableTrace(True)
         self.model = torchvision.models.resnet18(pretrained=True)
+
+        print('Running 5 images - dummy data on startup...', flush=True)
+        dummy_data_dir = '/nvdli-nano/jetson-ml-client/dummy_data/'
+        for i in range(5):
+            random_image_path = random.choice(os.listdir(dummy_data_dir))
+            print(f'Random image: {random_image_path}', flush=True)
+            random_image = preprocess(cv2.imread(dummy_data_dir+random_image_path))
+            self.handler(random_image, 'alextest')
+
         self.run()
         
     def handler(self, image, team_name):
