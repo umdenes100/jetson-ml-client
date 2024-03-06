@@ -3,10 +3,9 @@ import websocket
 import json
 import os
 import random
-import PIL.Image
 import numpy as np
-import io
 import cv2
+import threading
 from time import sleep
 import torch
 import torchvision
@@ -27,13 +26,6 @@ class NpEncoder(json.JSONEncoder):
             return obj.tolist()
         return super(NpEncoder, self).default(obj)
 
-import torch
-import torchvision.transforms as transforms
-import torch.nn.functional as F
-from utils import preprocess
-
-mean = torch.Tensor([0.485, 0.456, 0.406]).cuda()
-std = torch.Tensor([0.229, 0.224, 0.225]).cuda()
 
 class JetsonClient:
 
@@ -82,48 +74,18 @@ class JetsonClient:
                 }, cls=NpEncoder))
 
     def on_message(self, _, message):
-        print(message,flush=True)
-        start = time.perf_counter()
+        print(message, flush=True)
         message = json.loads(message)
         if not message['op'] == 'prediction_request':
             return
         
-        IP = message['ESPIP'][0]
+        ip = message['ESPIP'][0]
         team_name = message['team_name']
-        try:
-            print(IP,flush=True)
-            print(team_name,flush=True)
-            cap = cv2.VideoCapture('http://' + IP + "/cam.jpg")
-            if cap.isOpened():
-                print("captured",flush=True)
-                ret, frame = cap.read()
-            else:
-                print("failed capture",flush=True)
-                raise Exception("Could not get image from WiFiCam (cv2)")
-            
-            try:
-                cv2.imwrite('/nvdli-nano/img_curr.jpg', frame)
-            except:
-                print('failed to save image :(', flush=True)
-            
-            print('Entering preprocess...', flush=True)
-            picture = preprocess(frame)
-            results = self.handler(picture, team_name)
-            print('Results: ' + str(results), flush=True)
-            print('Sending to VS...', flush=True)
-            self.ws.send(json.dumps({
-                "op": "prediction_results",
-                "teamName": team_name,
-                "prediction": results,
-                "executionTime": time.perf_counter() - start
-            }, cls=NpEncoder))
-            print('sent :)')
-        except Exception as e:
-             self.ws.send(json.dumps({
-                "op": "prediction_results",
-                "teamName": team_name,
-                "error": str(e)
-            }, cls=NpEncoder))
+        self.task_queue.put({
+            'team_name': team_name,
+            'ip': ip,
+        })
+        print(f'queued message from team {team_name}', flush=True)
 
     def on_open(self, _):
         print("Opened!", flush=True)
@@ -142,6 +104,7 @@ class JetsonClient:
             sleep(5)
 
     def __init__(self):
+        self.task_queue = queue.Queue()
         # websocket.enableTrace(True)
         self.model = torchvision.models.resnet18(pretrained=True)
 
@@ -152,11 +115,10 @@ class JetsonClient:
             print(f'Random image: {random_image_path}', flush=True)
             random_image = preprocess(cv2.imread(dummy_data_dir+random_image_path))
             self.handler(random_image, 'alextest')
-
+        threading.Thread(name='task queue handler', args=(), target=self.processor).start()
         self.run()
         
     def handler(self, image, team_name):
-        res = ''
         model_fi = None
         for entry in os.scandir('/nvdli-nano/jetson-ml-client/model-listener/models/'):
             if entry.name.startswith(team_name):
@@ -172,14 +134,11 @@ class JetsonClient:
         self.model.fc = torch.nn.Linear(512, dim)
         self.model = self.model.to(torch.device('cuda'))
 
-        # TODO figure out what of these can be declared outisde of the handler possibly
         self.model.load_state_dict(torch.load('/nvdli-nano/jetson-ml-client/model-listener/models/' + model_fi))
         self.model.eval()
         output = self.model(image)
         output = F.softmax(output, dim=1).detach().cpu().numpy().flatten()
 
-        for i, score in enumerate(list(output)):
-            print(str(i) + " " + str(score), flush=True)
         return output.argmax()
 
 
