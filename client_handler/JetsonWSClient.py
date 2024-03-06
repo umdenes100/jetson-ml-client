@@ -10,7 +10,12 @@ import cv2
 from time import sleep
 import torch
 import torchvision
+import torchvision.transforms as transforms
 import torch.nn.functional as F
+import queue
+
+from utils import preprocess
+
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -31,6 +36,51 @@ mean = torch.Tensor([0.485, 0.456, 0.406]).cuda()
 std = torch.Tensor([0.229, 0.224, 0.225]).cuda()
 
 class JetsonClient:
+
+    def processor(self):
+        """
+        This function runs forever, checking the queue and looking for jobs.
+        """
+        while True:
+            # Check the queue
+            request = self.task_queue.get(block=True, timeout=None)
+            ip = request["ip"]
+            team_name = request["team_name"]
+            print(f'Handling message from team {team_name}', flush=True)
+
+            start = time.perf_counter()
+            try:
+                cap = cv2.VideoCapture('http://' + ip + "/cam.jpg")
+                if cap.isOpened():
+                    ret, frame = cap.read()
+                else:
+                    print("failed capture", flush=True)
+                    raise Exception("Could not get image from WiFiCam (cv2)")
+
+                try:
+                    cv2.imwrite('/nvdli-nano/img_curr.jpg', frame)
+                except:
+                    print('failed to save image :(', flush=True)
+
+                print('Entering preprocess...', flush=True)
+                picture = preprocess(frame)
+                results = self.handler(picture, team_name)
+                print('Results: ' + str(results), flush=True)
+
+                self.ws.send(json.dumps({
+                    "op": "prediction_results",
+                    "teamName": team_name,
+                    "prediction": results,
+                    "executionTime": time.perf_counter() - start
+                }, cls=NpEncoder))
+                print('sent :)',flush=True)
+            except Exception as e:
+                self.ws.send(json.dumps({
+                    "op": "prediction_results",
+                    "teamName": team_name,
+                    "error": str(e)
+                }, cls=NpEncoder))
+
     def on_message(self, _, message):
         print(message,flush=True)
         start = time.perf_counter()
