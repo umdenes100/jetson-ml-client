@@ -114,19 +114,22 @@ class JetsonClient:
             random_image_path = random.choice(os.listdir(dummy_data_dir))
             print(f'Random image: {random_image_path}', flush=True)
             random_image = preprocess(cv2.imread(dummy_data_dir+random_image_path))
-            self.handler(random_image, 'alextest')
+            self.handler(random_image, 'STARTUP_alextest')
         threading.Thread(name='task queue handler', args=(), target=self.processor).start()
         self.run()
         
     def handler(self, image, team_name):
         model_fi = None
-        for entry in os.scandir('/nvdli-nano/jetson-ml-client/model-listener/models/'):
-            if entry.name.startswith(team_name):
-                model_fi = entry.name
-                break
-        if model_fi is None:
-            print("model file not found", flush=True)
-            raise Exception(f"Cound not find model for team: {team_name} \n Available models: {', '.join([entry.name for entry in os.scandir('/model-listener/models/')])}")
+        if (team_name == 'STARTUP_alextest'):
+            model_fi = '/nvdli-nano/jetson-ml-client/dummy_data/alextest_3.pth'
+        else:
+            for entry in os.scandir('/nvdli-nano/jetson-ml-client/model-listener/models/'):
+                if entry.name.startswith(team_name):
+                    model_fi = entry.name
+                    break
+            if model_fi is None:
+                print("model file not found", flush=True)
+                raise Exception(f"Cound not find model for team: {team_name} \n Available models: {', '.join([entry.name for entry in os.scandir('/model-listener/models/')])}")
         
         num_str = model_fi.split('_')[-1]
         num_str = os.path.splitext(num_str)[0]
