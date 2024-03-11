@@ -120,24 +120,29 @@ class JetsonClient:
         
     def handler(self, image, team_name):
         model_fi = None
-        if (team_name == 'STARTUP_alextest'):
-            model_fi = '/nvdli-nano/jetson-ml-client/dummy_data/alextest_3.pth'
-        else:
+        if not team_name == 'STARTUP_alextest':
             for entry in os.scandir('/nvdli-nano/jetson-ml-client/model-listener/models/'):
                 if entry.name.startswith(team_name):
                     model_fi = entry.name
                     break
-        if model_fi is None:
-            print("model file not found", flush=True)
-            raise Exception(f"Cound not find model for team: {team_name} \n Available models: {', '.join([entry.name for entry in os.scandir('/model-listener/models/')])}")
+            if model_fi is None:
+                print("model file not found", flush=True)
+                raise Exception(f"Cound not find model for team: {team_name} \n Available models: {', '.join([entry.name for entry in os.scandir('/model-listener/models/')])}")
         
-        num_str = model_fi.split('_')[-1]
-        num_str = os.path.splitext(num_str)[0]
-        dim = int(num_str)
+            num_str = model_fi.split('_')[-1]
+            num_str = os.path.splitext(num_str)[0]
+            dim = int(num_str)
+        else:
+            dim = 3
+            
         self.model.fc = torch.nn.Linear(512, dim)
         self.model = self.model.to(torch.device('cuda'))
 
-        self.model.load_state_dict(torch.load('/nvdli-nano/jetson-ml-client/model-listener/models/' + model_fi))
+        if team_name == 'STARTUP_alextest':
+            self.model.load_state_dict(torch.load('/nvdli-nano/jetson-ml-client/dummy_data/alextest_3.pth'))
+        else:
+            self.model.load_state_dict(torch.load('/nvdli-nano/jetson-ml-client/model-listener/models/' + model_fi))
+
         self.model.eval()
         output = self.model(image)
         output = F.softmax(output, dim=1).detach().cpu().numpy().flatten()
