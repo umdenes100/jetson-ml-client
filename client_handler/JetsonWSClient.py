@@ -127,9 +127,9 @@ class JetsonClient:
                 if entry.name.startswith(team_name):
                     model_fi = entry.name
                     break
-            if model_fi is None:
-                print("model file not found", flush=True)
-                raise Exception(f"Cound not find model for team: {team_name} \n Available models: {', '.join([entry.name for entry in os.scandir('/model-listener/models/')])}")
+        if model_fi is None:
+            print("model file not found", flush=True)
+            raise Exception(f"Cound not find model for team: {team_name} \n Available models: {', '.join([entry.name for entry in os.scandir('/model-listener/models/')])}")
         
         num_str = model_fi.split('_')[-1]
         num_str = os.path.splitext(num_str)[0]
