@@ -15,6 +15,8 @@ import queue
 
 from utils import preprocess
 
+model_dir = '/nvdli-nano/jetson-ml-client/model-listener/models/'
+
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -121,13 +123,13 @@ class JetsonClient:
     def handler(self, image, team_name):
         model_fi = None
         if not team_name == 'STARTUP_alextest':
-            for entry in os.scandir('/nvdli-nano/jetson-ml-client/model-listener/models/'):
+            for entry in os.scandir(model_dir):
                 if entry.name.startswith(team_name):
                     model_fi = entry.name
                     break
             if model_fi is None:
                 print("model file not found", flush=True)
-                raise Exception(f"Cound not find model for team: {team_name} \n Available models: {', '.join([entry.name for entry in os.scandir('/model-listener/models/')])}")
+                raise Exception(f"Cound not find model for team: {team_name} \n Available models: {', '.join([entry.name for entry in os.scandir(model_dir)])}")
         
             num_str = model_fi.split('_')[-1]
             num_str = os.path.splitext(num_str)[0]
@@ -141,7 +143,7 @@ class JetsonClient:
         if team_name == 'STARTUP_alextest':
             self.model.load_state_dict(torch.load('/nvdli-nano/jetson-ml-client/dummy_data/alextest_3.pth'))
         else:
-            self.model.load_state_dict(torch.load('/nvdli-nano/jetson-ml-client/model-listener/models/' + model_fi))
+            self.model.load_state_dict(torch.load(model_dir + model_fi))
 
         self.model.eval()
         output = self.model(image)
