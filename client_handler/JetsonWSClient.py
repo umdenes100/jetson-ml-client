@@ -40,6 +40,7 @@ class JetsonClient:
             request = self.task_queue.get(block=True, timeout=None)
             ip = request["ip"]
             team_name = request["team_name"]
+            model_index = request["model_index"]
             print(f'Handling message from team {team_name}', flush=True)
 
             start = time.perf_counter()
@@ -58,7 +59,7 @@ class JetsonClient:
 
                 print('Entering preprocess...', flush=True)
                 picture = preprocess(frame)
-                results = self.handler(picture, team_name)
+                results = self.handler(picture, team_name, model_index)
                 print('Results: ' + str(results), flush=True)
 
                 self.ws.send(json.dumps({
@@ -83,11 +84,13 @@ class JetsonClient:
         
         ip = message['ESPIP'][0]
         team_name = message['team_name']
+        model_index = message["model_index"]
         self.task_queue.put({
             'team_name': team_name,
             'ip': ip,
+            'model_index' : model_index
         })
-        print(f'queued message from team {team_name}', flush=True)
+        print(f'queued message from team {team_name}, model index {model_index}', flush=True)
 
     def on_open(self, _):
         print("Opened!", flush=True)
@@ -120,19 +123,21 @@ class JetsonClient:
         threading.Thread(name='task queue handler', args=(), target=self.processor).start()
         self.run()
         
-    def handler(self, image, team_name):
+    def handler(self, image, team_name, model_index):
         model_fi = None
         if not team_name == 'STARTUP_alextest':
             for entry in os.scandir(model_dir):
-                if entry.name.startswith(team_name):
+                if entry.name.startswith(team_name) and int(entry.name.split('_')[1]) == model_index:
                     model_fi = entry.name
                     break
+
             if model_fi is None:
                 print("model file not found", flush=True)
-                raise Exception(f"Cound not find model for team: {team_name} \n Available models: {', '.join([entry.name for entry in os.scandir(model_dir)])}")
-        
-            num_str = model_fi.split('_')[-1]
-            num_str = os.path.splitext(num_str)[0]
+                raise Exception(f"Cound not find model for team: {team_name} with model index: {model_index} 
+                                \n Available models: {', '.join([entry.name for entry in os.scandir(model_dir)])}")
+                
+            num_str = model_fi.split('_')[-1] # get last segment "#.pth"
+            num_str = os.path.splitext(num_str)[0] # get rid of ".pth"
             dim = int(num_str)
         else:
             dim = 3
