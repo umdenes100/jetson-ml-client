@@ -3,3 +3,4 @@ model-listener/node_modules
 model-listener/package*
 *.swp
 .idea
+*.pyc
