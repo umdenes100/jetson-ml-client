@@ -115,11 +115,15 @@ class JetsonClient:
 
         print('Running 5 images - dummy data on startup...', flush=True)
         dummy_data_dir = '/nvdli-nano/jetson-ml-client/dummy_data/'
-        for i in range(5):
+        i=0
+        while i < 5:
             random_image_path = random.choice(os.listdir(dummy_data_dir))
+            if os.path.splitext(random_image_path)[1] != '.jpg':
+                continue
             print(f'Random image: {random_image_path}', flush=True)
             random_image = preprocess(cv2.imread(dummy_data_dir+random_image_path))
-            self.handler(random_image, 'STARTUP_alextest')
+            self.handler(random_image, 'STARTUP_alextest', -1)
+            i+=1
         threading.Thread(name='task queue handler', args=(), target=self.processor).start()
         self.run()
         
@@ -133,9 +137,7 @@ class JetsonClient:
 
             if model_fi is None:
                 print("model file not found", flush=True)
-                raise Exception(f"Cound not find model for team: {team_name} with model index: {model_index} 
-                                \n Available models: {', '.join([entry.name for entry in os.scandir(model_dir)])}")
-                
+                raise Exception(f"Cound not find model for team: {team_name} with model index: {model_index}; Available models: {', '.join([entry.name for entry in os.scandir(model_dir)])}")
             num_str = model_fi.split('_')[-1] # get last segment "#.pth"
             num_str = os.path.splitext(num_str)[0] # get rid of ".pth"
             dim = int(num_str)
@@ -148,6 +150,7 @@ class JetsonClient:
         if team_name == 'STARTUP_alextest':
             self.model.load_state_dict(torch.load('/nvdli-nano/jetson-ml-client/dummy_data/alextest_3.pth'))
         else:
+            print(f"using model {model_fi}...")
             self.model.load_state_dict(torch.load(model_dir + model_fi))
 
         self.model.eval()
