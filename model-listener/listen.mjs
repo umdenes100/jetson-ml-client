@@ -8,13 +8,11 @@ import fetch from 'node-fetch'
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyB6TB3KIRLIc0kVpps1A9ugtcY0qQP5L_E",
-    authDomain: "enes100-ml-models.firebaseapp.com",
-    projectId: "enes100-ml-models",
-    storageBucket: "enes100-ml-models.appspot.com",
-    messagingSenderId: "434134653480",
-    appId: "1:434134653480:web:218d18208513377b01331d",
-    databaseURL: "https://enes100-ml-models-default-rtdb.firebaseio.com/",
+    apiKey: "AIzaSyBAMDAGYHNMtPaXAwJl-BRvxvl37E7Z3xE",
+    projectId: "engr-enes100tool-inv-firebase",
+    databaseURL: "https://engr-enes100tool-inv-firebase-model-watcher.firebaseio.com/",
+    storageBucket: "engr-enes100tool-inv-firebase.appspot.com",
+    appId: "1:763916402491:web:e598de3c258f7d4faa811e"
 };
 
 // Initialize Firebase
